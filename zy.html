@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>主页 - 书签管理器</title>
+    <style>
+        /* 全局样式 - 优化移动端体验 */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
+            margin: 0;
+            padding: 15px;
+            min-height: 100vh;
+            color: #333;
+        }
+
+        /* 顶部控制区 - 垂直排列更适合移动端 */
+        .controls-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        /* 下拉菜单 - 添加点击事件支持移动端 */
+        .dropdown {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .add-button {
+            background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 8px;
+            width: 100%;
+            text-align: left;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .add-button:hover, .add-button:active {
+            background: linear-gradient(135deg, #45a049 0%, #1B5E20 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .add-button::after {
+            content: '▼';
+            font-size: 12px;
+            transition: transform 0.3s;
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: white;
+            min-width: 100%;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+            z-index: 100;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-top: 5px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .dropdown-content.show {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .dropdown-content button {
+            color: #333;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+            width: 100%;
+            text-align: left;
+            border: none;
+            background-color: white;
+            cursor: pointer;
+            font-size: 15px;
+            transition: background-color 0.2s;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .dropdown-content button:last-child {
+            border-bottom: none;
+        }
+
+        .dropdown-content button:hover, .dropdown-content button:active {
+            background-color: #f5f5f5;
+        }
+
+        /* 搜索框样式 - 优化移动端输入 */
+        .search-container {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+        }
+
+        .search-input {
+            padding: 12px 15px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            flex: 1;
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .search-input:focus {
+            border-color: #4CAF50;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+        }
+
+        .search-button {
+            padding: 12px 20px;
+            font-size: 16px;
+            background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s;
+        }
+
+        .search-button:active {
+            transform: scale(0.98);
+        }
+
+        /* 书签网格 - 响应式设计 */
+        .bookmark-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        /* 书签项样式 - 优化移动端触摸体验 */
+        .bookmark-item {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+            padding: 16px;
+            text-align: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
+            user-select: none;
+            cursor: pointer;
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #f0f0f0;
+        }
+
+        .bookmark-item:active {
+            transform: translateY(3px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .bookmark-icon {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 12px;
+            border-radius: 8px;
+            background: #f5f5f5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .bookmark-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin: 5px 0;
+            color: #222;
+            line-height: 1.3;
+            word-break: break-word;
+        }
+
+        /* 删除按钮 - 改为长按触发，避免误触 */
+        .delete-hint {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background-color: rgba(255, 77, 77, 0.9);
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .bookmark-item.long-press .delete-hint {
+            opacity: 1;
+        }
+
+        /* 对话框基础样式 - 优化移动端显示 */
+        .dialog-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            backdrop-filter: blur(2px);
+        }
+
+        .dialog {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 25px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            width: 90%;
+            max-width: 400px;
+            z-index: 1001;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .dialog.show {
+            display: block;
+            animation: zoomIn 0.3s ease;
+        }
+
+        .dialog-overlay.show {
+            display: block;
+        }
+
+        .dialog h3 {
+            margin-top: 0;
+            color: #2E7D32;
+        }
+
+        .dialog input, .dialog textarea {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 15px;
+            box-sizing: border-box;
+        }
+
+        .dialog input:focus, .dialog textarea:focus {
+            border-color: #4CAF50;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+        }
+
+        .dialog-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .dialog button {
+            padding: 10px 18px;
+            font-size: 15px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-width: 80px;
+        }
+
+        .btn-confirm {
+            background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%);
+            color: white;
+        }
+
+        .btn-cancel {
+            background: #f5f5f5;
+            color: #555;
+        }
+
+        .btn-confirm:active, .btn-cancel:active {
+            transform: scale(0.96);
+        }
+
+        /* 状态提示 */
+        .status-message {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 2000;
+            pointer-events: none;
+            text-align: center;
+            max-width: 90%;
+        }
+
+        .status-message.show {
+            opacity: 1;
+        }
+
+        /* 动画 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes zoomIn {
+            from { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+            to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .bookmark-grid {
+                grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+                gap: 12px;
+            }
+
+            .controls-container {
+                gap: 12px;
+            }
+
+            .dialog {
+                width: 95%;
+                padding: 20px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .bookmark-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+
+            .bookmark-item {
+                padding: 12px;
+                min-height: 100px;
+            }
+
+            .bookmark-icon {
+                width: 36px;
+                height: 36px;
+                font-size: 18px;
+            }
+
+            .bookmark-title {
+                font-size: 13px;
+            }
+
+            body {
+                padding: 10px;
+            }
+        }
+
+        /* 导出数据区域 - 隐藏但保留功能 */
+        #localStorageData {
+            display: none;
+            white-space: pre-wrap;
+            background: #f8f8f8;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            overflow-x: auto;
+            font-size: 12px;
+            border: 1px solid #eee;
+        }
+
+        /* 操作提示 */
+        .instruction {
+            background: #e8f5e9;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-size: 14px;
+            border-left: 4px solid #4CAF50;
+            line-height: 1.5;
+        }
+
+        .instruction strong {
+            color: #2E7D32;
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部控制区 -->
+    <div class="controls-container">
+        <!-- 下拉菜单 - 添加点击事件支持移动端 -->
+        <div class="dropdown">
+            <button class="add-button" id="mainMenuBtn">
+                主页设置
+            </button>
+            <div class="dropdown-content" id="dropdownContent">
+                <button onclick="openAddBookmarkDialog()">添加书签</button>
+                <button onclick="openImportDialog()">导入书签</button>
+                <button onclick="showLocalStorageData()">导出书签</button>
+                <button onclick="uploadToGitHub()">上传到 GitHub</button>
+                <button onclick="downloadFromGitHub()">从 GitHub 下载</button>
+            </div>
+        </div>
+
+        <!-- 网页搜索框 -->
+        <div class="search-container">
+            <input type="text" id="webSearchInput" class="search-input" placeholder="搜索网页...">
+            <button class="search-button" onclick="performWebSearch()">搜索</button>
+        </div>
+
+        <!-- 操作提示 -->
+        <div class="instruction">
+            <strong>操作提示：</strong>长按书签1秒可删除 • 点击书签打开链接 • 点击按钮打开菜单
+        </div>
+    </div>
+
+    <!-- 书签网格 -->
+    <div class="bookmark-grid" id="bookmarkGrid">
+        <!-- 书签项将通过 JavaScript 动态插入 -->
+    </div>
+
+    <!-- 添加书签对话框 -->
+    <div class="dialog-overlay" id="addDialogOverlay"></div>
+    <div class="dialog" id="addBookmarkDialog">
+        <h3>添加书签</h3>
+        <label for="bookmarkTitle">标题:</label>
+        <input type="text" id="bookmarkTitle" placeholder="输入标题" autocomplete="off">
+
+        <label for="bookmarkUrl">URL:</label>
+        <input type="text" id="bookmarkUrl" placeholder="输入URL" autocomplete="off">
+
+        <label for="bookmarkIcon">图标 URL (可选):</label>
+        <input type="text" id="bookmarkIcon" placeholder="输入图标URL" autocomplete="off">
+
+        <div class="dialog-buttons">
+            <button class="btn-cancel" onclick="closeAddBookmarkDialog()">取消</button>
+            <button class="btn-confirm" onclick="addBookmark()">添加</button>
+        </div>
+    </div>
+
+    <!-- 删除对话框 -->
+    <div class="dialog-overlay" id="deleteDialogOverlay"></div>
+    <div class="dialog" id="deleteDialog">
+        <h3>确认删除</h3>
+        <p>确定要删除这个书签吗？</p>
+        <div class="dialog-buttons">
+            <button class="btn-cancel" onclick="cancelDelete()">取消</button>
+            <button class="btn-confirm" onclick="confirmDelete()">删除</button>
+        </div>
+    </div>
+
+    <!-- 导入对话框 -->
+    <div class="dialog-overlay" id="importDialogOverlay"></div>
+    <div class="dialog" id="importDialog">
+        <h3>导入书签数据</h3>
+        <textarea id="importDataInput" placeholder="在此粘贴 JSON 数据..." rows="6"></textarea>
+        <div class="dialog-buttons">
+            <button class="btn-cancel" onclick="closeImportDialog()">取消</button>
+            <button class="btn-confirm" onclick="importFromDialog()">导入</button>
+        </div>
+    </div>
+
+    <!-- 显示导出数据的区域 -->
+    <pre id="localStorageData"></pre>
+
+    <!-- 状态消息提示 -->
+    <div class="status-message" id="statusMessage"></div>
+
+    <script>
+        // 书签数据
+        let bookmarks = [];
+        let deleteIndex = null; // 当前待删除的书签索引
+        let longPressTimer = null; // 长按计时器
+        let isLongPress = false; // 是否触发了长按
+
+        // 显示状态消息
+        function showStatus(message, duration = 3000) {
+            const statusEl = document.getElementById('statusMessage');
+            statusEl.textContent = message;
+            statusEl.classList.add('show');
+            setTimeout(() => {
+                statusEl.classList.remove('show');
+            }, duration);
+        }
+
+        // 保存书签数据
+        function saveBookmarks() {
+            localStorage.setItem("bookmarks", JSON.stringify(bookmarks));
+            showStatus("书签已保存");
+        }
+
+        // 加载书签数据
+        function loadBookmarks() {
+            const savedBookmarks = localStorage.getItem("bookmarks");
+            if (savedBookmarks) {
+                bookmarks = JSON.parse(savedBookmarks);
+                renderBookmarks(bookmarks);
+                showStatus(`已加载 ${bookmarks.length} 个书签`);
+            } else {
+                // 如果没有本地数据，尝试从GitHub下载
+                setTimeout(downloadFromGitHub, 500);
+            }
+        }
+
+        // 渲染书签网格
+        function renderBookmarks(bookmarksToRender) {
+            const bookmarkGrid = document.getElementById("bookmarkGrid");
+            bookmarkGrid.innerHTML = "";
+
+            if (bookmarksToRender.length === 0) {
+                bookmarkGrid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 30px; color: #888;">暂无书签，请添加或从GitHub下载</div>`;
+                return;
+            }
+
+            bookmarksToRender.forEach((bookmark, index) => {
+                const bookmarkItem = document.createElement("div");
+                bookmarkItem.className = "bookmark-item";
+                bookmarkItem.dataset.index = index; // 存储索引
+
+                // 添加删除提示
+                const deleteHint = document.createElement("div");
+                deleteHint.className = "delete-hint";
+                deleteHint.textContent = "长按";
+                bookmarkItem.appendChild(deleteHint);
+
+                // 设置点击事件 - 打开链接
+                bookmarkItem.addEventListener("click", function() {
+                    if (!isLongPress) {
+                        window.open(bookmark.url, "_blank");
+                    }
+                    isLongPress = false; // 重置长按标志
+                });
+
+                // 长按事件处理 - 桌面端
+                bookmarkItem.addEventListener("mousedown", function() {
+                    isLongPress = false;
+                    longPressTimer = setTimeout(() => {
+                        isLongPress = true;
+                        bookmarkItem.classList.add("long-press");
+                        showDeleteDialog(index);
+                    }, 800); // 800ms 长按
+                });
+
+                bookmarkItem.addEventListener("mouseup", function() {
+                    clearTimeout(longPressTimer);
+                    bookmarkItem.classList.remove("long-press");
+                });
+
+                bookmarkItem.addEventListener("mouseleave", function() {
+                    clearTimeout(longPressTimer);
+                    bookmarkItem.classList.remove("long-press");
+                });
+
+                // 长按事件处理 - 移动端
+                bookmarkItem.addEventListener("touchstart", function(e) {
+                    isLongPress = false;
+                    bookmarkItem.classList.add("long-press");
+                    longPressTimer = setTimeout(() => {
+                        isLongPress = true;
+                        navigator.vibrate && navigator.vibrate(50); // 振动反馈
+                        showDeleteDialog(index);
+                    }, 800);
+                });
+
+                bookmarkItem.addEventListener("touchend", function() {
+                    clearTimeout(longPressTimer);
+                    bookmarkItem.classList.remove("long-press");
+                });
+
+                bookmarkItem.addEventListener("touchmove", function() {
+                    clearTimeout(longPressTimer);
+                    bookmarkItem.classList.remove("long-press");
+                });
+
+                // 图标处理
+                const iconSrc = bookmark.icon || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='%234CAF50'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z'/%3E%3C/svg%3E";
+                const iconImg = document.createElement("img");
+                iconImg.src = iconSrc;
+                iconImg.className = "bookmark-icon";
+                iconImg.onerror = function() {
+                    this.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='%234CAF50'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z'/%3E%3C/svg%3E";
+                };
+
+                const titleDiv = document.createElement("div");
+                titleDiv.className = "bookmark-title";
+                titleDiv.textContent = bookmark.title;
+
+                bookmarkItem.appendChild(iconImg);
+                bookmarkItem.appendChild(titleDiv);
+                bookmarkGrid.appendChild(bookmarkItem);
+            });
+        }
+
+        // 显示删除对话框
+        function showDeleteDialog(index) {
+            deleteIndex = index;
+            document.getElementById("deleteDialog").classList.add("show");
+            document.getElementById("deleteDialogOverlay").classList.add("show");
+        }
+
+        // 确认删除
+        function confirmDelete() {
+            if (deleteIndex !== null) {
+                const deletedItem = bookmarks[deleteIndex];
+                bookmarks.splice(deleteIndex, 1);
+                renderBookmarks(bookmarks);
+                saveBookmarks();
+                showStatus(`已删除: ${deletedItem.title}`);
+                deleteIndex = null;
+                uploadToGitHub(); // 自动上传到GitHub
+            }
+            closeDeleteDialog();
+        }
+
+        // 取消删除
+        function cancelDelete() {
+            deleteIndex = null;
+            closeDeleteDialog();
+        }
+
+        // 关闭删除对话框
+        function closeDeleteDialog() {
+            document.getElementById("deleteDialog").classList.remove("show");
+            document.getElementById("deleteDialogOverlay").classList.remove("show");
+        }
+
+        // 打开添加书签对话框
+        function openAddBookmarkDialog() {
+            document.getElementById("addBookmarkDialog").classList.add("show");
+            document.getElementById("addDialogOverlay").classList.add("show");
+            document.getElementById("bookmarkTitle").focus();
+            closeDropdown(); // 关闭下拉菜单
+        }
+
+        // 关闭添加书签对话框
+        function closeAddBookmarkDialog() {
+            document.getElementById("addBookmarkDialog").classList.remove("show");
+            document.getElementById("addDialogOverlay").classList.remove("show");
+            // 清空输入
+            document.getElementById("bookmarkTitle").value = "";
+            document.getElementById("bookmarkUrl").value = "";
+            document.getElementById("bookmarkIcon").value = "";
+        }
+
+        // 添加书签
+        function addBookmark() {
+            const title = document.getElementById("bookmarkTitle").value.trim();
+            const url = document.getElementById("bookmarkUrl").value.trim();
+            const icon = document.getElementById("bookmarkIcon").value.trim();
+
+            if (!title || !url) {
+                showStatus("请输入标题和URL！");
+                return;
+            }
+
+            // 验证URL格式
+            if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                showStatus("URL必须以http://或https://开头");
+                return;
+            }
+
+            bookmarks.push({
+                title,
+                url,
+                icon: icon || "https://cn.bing.com/favicon.ico"
+            });
+
+            renderBookmarks(bookmarks);
+            saveBookmarks();
+            closeAddBookmarkDialog();
+            showStatus("书签添加成功！");
+            uploadToGitHub(); // 自动上传到GitHub
+        }
+
+        // 网页搜索
+        function performWebSearch() {
+            const query = document.getElementById("webSearchInput").value.trim();
+            if (query) {
+                const searchUrl = `https://cn.bing.com/search?q=${encodeURIComponent(query)}`;
+                window.open(searchUrl, "_blank");
+            } else {
+                showStatus("请输入搜索关键字！");
+            }
+        }
+
+        // 按下回车键触发网页搜索
+        document.getElementById("webSearchInput").addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+                performWebSearch();
+            }
+        });
+
+        // 显示 localStorage 数据
+        function showLocalStorageData() {
+            const localStorageData = { ...localStorage };
+            const jsonString = JSON.stringify(localStorageData, null, 2);
+            const dataContainer = document.getElementById("localStorageData");
+
+            dataContainer.textContent = jsonString;
+            dataContainer.style.display = "block";
+            closeDropdown(); // 关闭下拉菜单
+
+            // 滚动到导出区域
+            dataContainer.scrollIntoView({ behavior: 'smooth' });
+            showStatus("书签数据已导出，可复制保存");
+        }
+
+        // 打开导入对话框
+        function openImportDialog() {
+            document.getElementById("importDialog").classList.add("show");
+            document.getElementById("importDialogOverlay").classList.add("show");
+            closeDropdown(); // 关闭下拉菜单
+        }
+
+        // 关闭导入对话框
+        function closeImportDialog() {
+            document.getElementById("importDialog").classList.remove("show");
+            document.getElementById("importDialogOverlay").classList.remove("show");
+            document.getElementById("importDataInput").value = "";
+        }
+
+        // 从对话框导入数据
+        function importFromDialog() {
+            const jsonString = document.getElementById("importDataInput").value.trim();
+            if (!jsonString) {
+                showStatus("请输入 JSON 数据！");
+                return;
+            }
+
+            try {
+                const importedData = JSON.parse(jsonString);
+                for (const key in importedData) {
+                    localStorage.setItem(key, importedData[key]);
+                }
+                showStatus("导入成功！");
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
+            } catch (error) {
+                showStatus("导入失败：JSON 格式不正确！");
+                console.error(error);
+            }
+        }
+
+        // 上传到 GitHub（覆盖旧文件）
+        async function uploadToGitHub() {
+            // 请替换为您的GitHub信息
+            const token = "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";
+            const repoOwner = "cqw868";
+            const repoName = "zhuye";
+            const filePath = "bookmarks.json";
+
+            if (!token || !repoOwner || !repoName || !filePath) {
+                showStatus("请配置GitHub信息！");
+                return;
+            }
+
+            const localStorageData = { ...localStorage };
+            const jsonString = JSON.stringify(localStorageData, null, 2);
+            const url = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`;
+
+            try {
+                showStatus("正在上传到GitHub...");
+
+                // 1. 获取旧文件的SHA值
+                const getResponse = await fetch(url, {
+                    headers: {
+                        "Authorization": `Bearer ${token}`,
+                        "Accept": "application/vnd.github.v3+json",
+                    },
+                });
+
+                let sha = null;
+                if (getResponse.ok) {
+                    const fileInfo = await getResponse.json();
+                    sha = fileInfo.sha;
+                }
+
+                // 2. 上传新文件
+                const content = btoa(unescape(encodeURIComponent(jsonString)));
+                const putResponse = await fetch(url, {
+                    method: "PUT",
+                    headers: {
+                        "Authorization": `Bearer ${token}`,
+                        "Content-Type": "application/json",
+                        "Accept": "application/vnd.github.v3+json",
+                    },
+                    body: JSON.stringify({
+                        message: "Update bookmarks data",
+                        content: content,
+                        sha: sha, // 如果存在旧文件则提供SHA
+                    }),
+                });
+
+                if (putResponse.ok) {
+                    showStatus("数据上传成功！", 2000);
+                } else {
+                    const error = await putResponse.json();
+                    throw new Error(error.message || "上传失败");
+                }
+            } catch (error) {
+                showStatus("上传失败: " + error.message);
+                console.error(error);
+            }
+        }
+
+        // 从 GitHub 下载 JSON 文件并导入书签
+        async function downloadFromGitHub() {
+            const repoOwner = "cqw868";
+            const repoName = "zhuye";
+            const filePath = "bookmarks.json";
+
+            if (!repoOwner || !repoName || !filePath) {
+                showStatus("请配置GitHub信息！");
+                return;
+            }
+
+            const url = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`;
+
+            try {
+                showStatus("正在从GitHub下载...");
+                const response = await fetch(url);
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        showStatus("GitHub上未找到书签文件");
+                    } else {
+                        throw new Error("文件下载失败");
+                    }
+                    return;
+                }
+
+                const data = await response.json();
+                const base64Content = data.content;
+                const decodedContent = decodeURIComponent(
+                    escape(atob(base64Content.replace(/\s/g, '')))
+                );
+                const jsonData = JSON.parse(decodedContent);
+
+                // 导入数据到localStorage
+                for (const key in jsonData) {
+                    localStorage.setItem(key, jsonData[key]);
+                }
+
+                // 重新加载书签
+                const savedBookmarks = localStorage.getItem("bookmarks");
+                if (savedBookmarks) {
+                    bookmarks = JSON.parse(savedBookmarks);
+                    renderBookmarks(bookmarks);
+                    showStatus(`成功下载并导入 ${bookmarks.length} 个书签`, 2000);
+                }
+            } catch (error) {
+                showStatus("下载失败: " + error.message);
+                console.error(error);
+            }
+        }
+
+        // 下拉菜单控制
+        function toggleDropdown() {
+            const dropdownContent = document.getElementById("dropdownContent");
+            dropdownContent.classList.toggle("show");
+        }
+
+        function closeDropdown() {
+            document.getElementById("dropdownContent").classList.remove("show");
+        }
+
+        // 初始化事件监听器
+        document.addEventListener('DOMContentLoaded', function() {
+            // 下拉菜单点击事件（桌面和移动端）
+            const mainMenuBtn = document.getElementById("mainMenuBtn");
+            mainMenuBtn.addEventListener("click", function(e) {
+                e.stopPropagation();
+                toggleDropdown();
+            });
+
+            // 点击页面其他地方关闭下拉菜单
+            document.addEventListener("click", function(e) {
+                const dropdown = document.querySelector(".dropdown");
+                if (!dropdown.contains(e.target)) {
+                    closeDropdown();
+                }
+            });
+
+            // 点击遮罩层关闭对话框
+            document.querySelectorAll(".dialog-overlay").forEach(overlay => {
+                overlay.addEventListener("click", function() {
+                    this.classList.remove("show");
+                    const dialog = this.nextElementSibling;
+                    if (dialog) dialog.classList.remove("show");
+                });
+            });
+
+            // 页面加载时初始化
+            setTimeout(loadBookmarks, 300);
+        });
+    </script>
+</body>
+</html>
