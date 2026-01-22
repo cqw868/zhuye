@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>主页</title>
+    <style>
+        /*（样式不变，略）*/
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px; }
+        .search-container { margin-bottom: 20px; display: flex; gap: 10px; }
+        .search-input { padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 5px; flex: 1; }
+        .search-button { padding: 10px 20px; font-size: 16px; background-color: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        .search-button:hover { background-color: #45a049; }
+        .bookmark-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 20px; margin-top: 5px; }
+        .bookmark-item { background-color: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); padding: 16px; text-align: center; transition: transform 0.2s, box-shadow 0.2s; position: relative; user-select: none; }
+        .bookmark-item:hover { transform: translateY(-5px); box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); }
+        .bookmark-icon { width: 48px; height: 48px; margin-bottom: 12px; }
+        .bookmark-title { font-size: 18px; font-weight: bold; margin: 8px 0; color: #333; }
+        .bookmark-url { font-size: 14px; color: #666; word-break: break-all; }
+        .delete-button { position: absolute; top: 8px; right: 8px; background-color: #ff4d4d; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+        .delete-button:hover { background-color: #ff1a1a; }
+        .add-button { background-color: #4CAF50; color: white; border: none; padding: 10px 20px; font-size: 16px; cursor: pointer; border-radius: 5px; margin-right: 10px; }
+        .add-button:hover { background-color: #45a049; }
+        .delete-dialog { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); border-radius: 8px; text-align: center; }
+        .delete-dialog button { margin: 0 10px; padding: 8px 16px; font-size: 14px; cursor: pointer; border: none; border-radius: 5px; }
+        .delete-dialog button.confirm { background-color: #ff4d4d; color: white; }
+        .delete-dialog button.confirm:hover { background-color: #ff1a1a; }
+        .delete-dialog button.cancel { background-color: #ccc; color: #333; }
+        .delete-dialog button.cancel:hover { background-color: #bbb; }
+        .import-dialog { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); border-radius: 8px; text-align: center; }
+        .import-dialog textarea { width: 100%; height: 150px; margin-bottom: 10px; padding: 10px; font-family: monospace; border: 1px solid #ccc; border-radius: 5px; }
+        .import-dialog button { margin: 0 10px; padding: 8px 16px; font-size: 14px; cursor: pointer; border: none; border-radius: 5px; }
+        .import-dialog button.confirm { background-color: #4CAF50; color: white; }
+        .import-dialog button.confirm:hover { background-color: #45a049; }
+        .import-dialog button.cancel { background-color: #ccc; color: #333; }
+        .import-dialog button.cancel:hover { background-color: #bbb; }
+        .dropdown { position: relative; display: inline-block; }
+        .dropdown-content { display: none; position: absolute; background-color: #f9f9f9; min-width: 160px; box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2); z-index: 1; border-radius: 5px; }
+        .dropdown-content button { color: black; padding: 12px 16px; text-decoration: none; display: block; width: 100%; text-align: left; border: none; background-color: transparent; cursor: pointer; }
+        .dropdown-content button:hover { background-color: #f1f1f1; }
+        .dropdown:hover .dropdown-content { display: block; }
+    </style>
+</head>
+<body>
+<div class="dropdown">
+    <button class="add-button">主页设置</button>
+    <div class="dropdown-content">
+        <button onclick="openAddBookmarkDialog()">添加书签</button>
+        <button onclick="openImportDialog()">导入书签</button>
+        <button onclick="showLocalStorageData()">导出书签</button>
+        <button onclick="uploadToGitHub()">上传到 GitHub</button>
+        <button onclick="downloadFromGitHub()">从 GitHub 下载</button>
+    </div>
+</div>
+
+<div class="search-container">
+    <input type="text" id="webSearchInput" class="search-input" placeholder="搜索网页..." onkeypress="handleWebSearchKeyPress(event)">
+    <button class="search-button" onclick="performWebSearch()">搜索</button>
+</div>
+
+<div class="bookmark-grid" id="bookmarkGrid"></div>
+
+<div id="addBookmarkDialog" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); border-radius: 8px;">
+    <h3>添加书签</h3>
+    <label for="bookmarkTitle">标题:</label>
+    <input type="text" id="bookmarkTitle" placeholder="输入标题"><br><br>
+    <label for="bookmarkUrl">URL:</label>
+    <input type="text" id="bookmarkUrl" placeholder="输入URL"><br><br>
+    <label for="bookmarkIcon">图标 URL:</label>
+    <input type="text" id="bookmarkIcon" placeholder="输入图标URL"><br><br>
+    <button onclick="addBookmark()">添加</button>
+    <button onclick="closeAddBookmarkDialog()">取消</button>
+</div>
+
+<div id="deleteDialog" class="delete-dialog">
+    <p>确定要删除这个书签吗？</p>
+    <button class="confirm" onclick="confirmDelete()">删除</button>
+    <button class="cancel" onclick="cancelDelete()">取消</button>
+</div>
+
+<div id="importDialog" class="import-dialog">
+    <h3>导入书签数据</h3>
+    <textarea id="importDataInput" placeholder="在此粘贴 JSON 数据..."></textarea>
+    <button class="confirm" onclick="importFromDialog()">导入</button>
+    <button class="cancel" onclick="closeImportDialog()">取消</button>
+</div>
+
+<pre id="localStorageData" style="display: none;"></pre>
+
+<script>
+    // 书签数据
+    let bookmarks = [];
+    let deleteIndex = null;
+
+    function saveBookmarks() {
+        localStorage.setItem("bookmarks", JSON.stringify(bookmarks));
+    }
+
+    function loadBookmarks() {
+        const savedBookmarks = localStorage.getItem("bookmarks");
+        if (savedBookmarks) {
+            try {
+                bookmarks = JSON.parse(savedBookmarks);
+            } catch (e) {
+                console.error("localStorage bookmarks parse error:", e);
+                bookmarks = [];
+            }
+        } else {
+            bookmarks = [];
+        }
+        renderBookmarks(bookmarks);
+    }
+
+    function renderBookmarks(bookmarksToRender) {
+        const bookmarkGrid = document.getElementById("bookmarkGrid");
+        bookmarkGrid.innerHTML = "";
+
+        bookmarksToRender.forEach((bookmark, index) => {
+            const bookmarkItem = document.createElement("div");
+            bookmarkItem.className = "bookmark-item";
+
+            bookmarkItem.addEventListener("click", function () {
+                // 在新标签打开
+                window.open(bookmark.url, "_blank");
+            });
+
+            let longPressTimer;
+            bookmarkItem.addEventListener("mousedown", function (e) {
+                // 防止 click 与 long-press 冲突
+                longPressTimer = setTimeout(() => showDeleteDialog(index), 1000);
+            });
+            bookmarkItem.addEventListener("mouseup", function () { clearTimeout(longPressTimer); });
+            bookmarkItem.addEventListener("mouseleave", function () { clearTimeout(longPressTimer); });
+            bookmarkItem.addEventListener("touchstart", function () {
+                longPressTimer = setTimeout(() => showDeleteDialog(index), 1000);
+            });
+            bookmarkItem.addEventListener("touchend", function () { clearTimeout(longPressTimer); });
+
+            bookmarkItem.innerHTML = `
+                <img src="${bookmark.icon || 'https://cn.bing.com/favicon.ico'}" alt="${bookmark.title || ''}" class="bookmark-icon">
+                <div class="bookmark-title">${bookmark.title || ''}</div>
+            `;
+
+            bookmarkGrid.appendChild(bookmarkItem);
+        });
+    }
+
+    function showDeleteDialog(index) {
+        deleteIndex = index;
+        document.getElementById("deleteDialog").style.display = "block";
+    }
+
+    function confirmDelete() {
+        if (deleteIndex !== null) {
+            bookmarks.splice(deleteIndex, 1);
+            renderBookmarks(bookmarks);
+            saveBookmarks();
+            deleteIndex = null;
+        }
+        document.getElementById("deleteDialog").style.display = "none";
+        // 可选：自动上传（若你确实希望每次修改同步）
+         uploadToGitHub();
+    }
+
+    function cancelDelete() {
+        deleteIndex = null;
+        document.getElementById("deleteDialog").style.display = "none";
+    }
+
+    function openAddBookmarkDialog() { document.getElementById("addBookmarkDialog").style.display = "block"; }
+    function closeAddBookmarkDialog() { document.getElementById("addBookmarkDialog").style.display = "none"; }
+
+    function addBookmark() {
+        const title = document.getElementById("bookmarkTitle").value.trim();
+        const url = document.getElementById("bookmarkUrl").value.trim();
+        const icon = document.getElementById("bookmarkIcon").value.trim();
+
+        if (title && url) {
+            bookmarks.push({ title, url, icon: icon || "https://cn.bing.com/favicon.ico" });
+            renderBookmarks(bookmarks);
+            closeAddBookmarkDialog();
+            saveBookmarks();
+            // 可选：自动上传
+             uploadToGitHub();
+        } else {
+            alert("请输入标题和URL！");
+        }
+    }
+
+    function performWebSearch() {
+        const query = document.getElementById("webSearchInput").value.trim();
+        if (query) {
+            const searchUrl = `https://cn.bing.com/search?q=${encodeURIComponent(query)}`;
+            window.open(searchUrl, "_blank");
+        } else {
+            alert("请输入搜索关键字！");
+        }
+    }
+
+    function handleWebSearchKeyPress(event) {
+        if (event.key === "Enter") performWebSearch();
+    }
+
+    function showLocalStorageData() {
+        const localStorageData = { ...localStorage };
+        const jsonString = JSON.stringify(localStorageData, null, 2);
+        const dataContainer = document.getElementById("localStorageData");
+        dataContainer.textContent = jsonString;
+        dataContainer.style.display = "block";
+    }
+
+    function openImportDialog() { document.getElementById("importDialog").style.display = "block"; }
+    function closeImportDialog() { document.getElementById("importDialog").style.display = "none"; }
+
+    function importFromDialog() {
+        const jsonString = document.getElementById("importDataInput").value.trim();
+        if (!jsonString) { alert("请输入 JSON 数据！"); return; }
+        try {
+            const importedData = JSON.parse(jsonString);
+            for (const key in importedData) localStorage.setItem(key, importedData[key]);
+            alert("导入成功！");
+            location.reload();
+        } catch (error) {
+            alert("导入失败：JSON 格式不正确！");
+            console.error(error);
+        }
+    }
+
+    // ---------- GitHub 同步相关（已改进：显式使用 branch，并增强错误/响应检查） ----------
+    // 注意：不要把长期有效的 PAT 放在前端。下面仍然示例放在前端，仅用于调试/学习。
+    // 在生产环境请用后端代理（后端保存 token 并做 GitHub API 请求）。
+
+    const GITHUB = {
+        repoOwner: "cqw868",
+        repoName: "zhuye",
+        filePath: "bookmarks.json",
+        branch: "main" // 这里显式指定分支为 main（你的仓库默认分支）
+    };
+
+    // 辅助：更稳健的 Base64 编码（支持 Unicode）
+    function base64EncodeUnicode(str) {
+        // encodeURIComponent -> percent-encoding -> convert percent to raw bytes -> btoa
+        return btoa(unescape(encodeURIComponent(str)));
+    }
+    function base64DecodeUnicode(b64) {
+        return decodeURIComponent(escape(atob(b64)));
+    }
+
+    // 上传（创建或更新）到 GitHub，包含明确的 branch 参数和更详细的响应检查
+    // 验证 push 后的 commits（用于排查服务器是否真的创建了 commit）
+    async function verifyCommitsAfterPush(repoOwner, repoName, filePath, branch, token) {
+        try {
+            const commitsUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/commits?path=${encodeURIComponent(filePath)}&sha=${encodeURIComponent(branch)}&per_page=5`;
+            console.log("GET commits ->", commitsUrl);
+            const commitsResp = await fetch(commitsUrl, {
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Accept": "application/vnd.github.v3+json"
+                }
+            });
+            const commitsJson = await commitsResp.json();
+            console.log("commits response:", commitsResp.status, commitsJson);
+            if (commitsResp.ok && Array.isArray(commitsJson) && commitsJson.length > 0) {
+                const latest = commitsJson[0];
+                alert("最新 commit:\nsha: " + latest.sha + "\nmsg: " + (latest.commit && latest.commit.message ? latest.commit.message : "(no message)"));
+            } else {
+                alert("无法获取 commits（status: " + commitsResp.status + "），请在桌面端用 DevTools 或者在 GitHub 网站上检查文件历史。");
+            }
+        } catch (e) {
+            console.error("verifyCommitsAfterPush error:", e);
+            alert("查询 commits 出错: " + (e.message || e));
+        }
+    }
+
+
+
+async function uploadToGitHub() {
+// ====== 把 token 填入（仅调试）或移到后端 ======
+
+
+const token = "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";
+if (!token || token === "PASTE_YOUR_TOKEN_HERE") {
+    alert("请在代码中填写 token（仅调试用），或改为后端代理。");
+    return;
+}
+
+// 确保 GITHUB 常量已正确定义并可访问
+if (typeof GITHUB === "undefined" || !GITHUB || !GITHUB.repoOwner || !GITHUB.repoName || !GITHUB.filePath || !GITHUB.branch) {
+    console.error("GITHUB 配置错误或未定义：", window.GITHUB);
+    alert("GITHUB 配置未正确设置，请确保 GITHUB 对象存在并包含 repoOwner/repoName/filePath/branch");
+    return;
+}
+
+const { repoOwner, repoName, filePath, branch } = GITHUB;
+const jsonString = JSON.stringify({ ...localStorage }, null, 2);
+const contentBase64 = base64EncodeUnicode(jsonString);
+
+// helper: fetch file info (cache-buster in URL) — 不要设置 Cache-Control 请求头，避免 CORS 预检失败
+async function fetchFileInfo() {
+    const getUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}?ref=${encodeURIComponent(branch)}&t=${Date.now()}`;
+    const resp = await fetch(getUrl, {
+        headers: {
+            "Authorization": `Bearer ${token}`,
+            "Accept": "application/vnd.github.v3+json"
+            // 不要添加 Cache-Control / Pragma 等会触发预检失败的自定义头
+        }
+    });
+    const json = await resp.json().catch(() => ({}));
+    return { resp, json };
+}
+
+try {
+    console.log("[upload] initial fetch...");
+    let { resp: getResp, json: getJson } = await fetchFileInfo();
+    console.log("[upload] GET:", getResp.status, getJson);
+
+    let remoteSha = null;
+    if (getResp.ok && getJson && getJson.sha) {
+        remoteSha = getJson.sha;
+        const remoteB64 = (getJson.content || "").replace(/\s/g, "");
+        if (remoteB64 && remoteB64 === contentBase64) {
+            alert("远端与本地数据一致，无需上传。");
+            return;
+        }
+    } else if (getResp.status === 404) {
+        console.warn("[upload] file not found on branch (will create)");
+    } else {
+        console.warn("[upload] GET returned non-ok:", getResp.status, getJson);
+        // 继续尝试，后续 PUT 会处理创建或失败
+    }
+
+    const putUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`;
+    const body = {
+        message: remoteSha ? "Update bookmarks data" : "Create bookmarks data",
+        content: contentBase64,
+        branch: branch
+    };
+    if (remoteSha) body.sha = remoteSha;
+
+    console.log("[upload] PUT with sha:", body.sha);
+    let putResp = await fetch(putUrl, {
+        method: "PUT",
+        headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json",
+            "Accept": "application/vnd.github.v3+json"
+        },
+        body: JSON.stringify(body)
+    });
+    let putJson = await putResp.json().catch(() => ({}));
+    console.log("[upload] PUT resp", putResp.status, putJson);
+
+    if (putResp.ok && putJson && putJson.commit && putJson.commit.sha) {
+        alert("上传成功，commit: " + putJson.commit.sha);
+        return;
+    }
+
+    // 处理冲突：sha 可能过期，重新 GET 最新 sha 并重试一次
+    const msg = (putJson && putJson.message) ? putJson.message : "";
+    if (putResp.status === 409 || putResp.status === 422 || msg.includes("does not match") || msg.includes("sha")) {
+        console.warn("[upload] conflict or bad request:", msg);
+
+        // 重新获取最新文件信息（no-cache）
+        const { resp: latestResp, json: latestJson } = await fetchFileInfo();
+        console.log("[upload] re-GET latest:", latestResp.status, latestJson);
+
+        // 如果文件不存在，创建新文件（不要带 sha）
+        if (latestResp.status === 404) {
+            const createBody = { message: "Create bookmarks data", content: contentBase64, branch: branch };
+            const createResp = await fetch(putUrl, {
+                method: "PUT",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                    "Accept": "application/vnd.github.v3+json"
+                },
+                body: JSON.stringify(createBody)
+            });
+            const createJson = await createResp.json().catch(() => ({}));
+            console.log("[upload] create resp", createResp.status, createJson);
+            if (createResp.ok && createJson.commit && createJson.commit.sha) {
+                alert("创建并上传成功，commit: " + createJson.commit.sha);
+            } else {
+                alert("创建失败: " + ((createJson && createJson.message) || ("HTTP " + createResp.status)));
+            }
+            return;
+        }
+
+        // 有最新版本：如果远端内容与本地相同则不需上传
+        const latestSha = latestJson.sha || null;
+        const latestB64 = (latestJson.content || "").replace(/\s/g, "");
+        if (latestB64 && latestB64 === contentBase64) {
+            alert("远端已更新为相同内容（可能在其他设备提交），无需重复上传。");
+            return;
+        }
+
+        // 用最新 sha 再试一次覆盖（注意：会覆盖远端最新内容）
+        if (latestSha) {
+            const retryBody = {
+                message: "Update bookmarks data (retry with latest sha)",
+                content: contentBase64,
+                branch: branch,
+                sha: latestSha
+            };
+            console.log("[upload] retry PUT with sha:", latestSha);
+            const retryResp = await fetch(putUrl, {
+                method: "PUT",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                    "Accept": "application/vnd.github.v3+json"
+                },
+                body: JSON.stringify(retryBody)
+            });
+            const retryJson = await retryResp.json().catch(() => ({}));
+            console.log("[upload] retry PUT resp", retryResp.status, retryJson);
+            if (retryResp.ok && retryJson && retryJson.commit && retryJson.commit.sha) {
+                alert("上传成功（重试），commit: " + retryJson.commit.sha);
+                return;
+            } else {
+                alert("重试失败: " + ((retryJson && retryJson.message) || ("HTTP " + retryResp.status)));
+                return;
+            }
+        } else {
+            alert("无法获取最新 sha 来重试，请在桌面端检查或稍后重试。");
+            return;
+        }
+    }
+
+    // 其他失败
+    alert("上传失败: " + (msg || ("HTTP " + putResp.status)));
+} catch (err) {
+    console.error("[upload] error", err);
+    alert("上传出错: " + (err.message || err));
+}
+}
+    // 从 GitHub 下载 JSON 文件并导入到 localStorage（指定 branch）
+    async function downloadFromGitHub() {
+        const { repoOwner, repoName, filePath, branch } = GITHUB;
+        const url = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}?ref=${encodeURIComponent(branch)}`;
+
+        try {
+            console.log("downloadFromGitHub GET ->", url);
+            const resp = await fetch(url, {
+                headers: { "Accept": "application/vnd.github.v3+json" }
+            });
+            if (!resp.ok) {
+                const err = await resp.json().catch(() => ({ message: "Unknown error" }));
+                throw new Error(err.message || ("HTTP " + resp.status));
+            }
+            const data = await resp.json();
+            console.log("download GET json:", data);
+
+            if (!data.content) throw new Error("下载的内容为空或格式不对");
+
+            // 解码 Base64 内容（处理可能有换行或 padding）
+            const base64Content = data.content.replace(/\s/g, '');
+            const decoded = base64DecodeUnicode(base64Content);
+            const jsonData = JSON.parse(decoded);
+
+            // 将下载的数据导入到 localStorage（覆盖当前 localStorage 中对应键）
+            for (const key in jsonData) localStorage.setItem(key, jsonData[key]);
+            // 载入书签
+            loadBookmarks();
+           // alert("书签数据导入成功（分支: " + branch + "）");
+        } catch (error) {
+            console.error("downloadFromGitHub error:", error);
+            alert("下载或导入失败：" + (error.message || error));
+        }
+    }
+
+    // ---------- 初始化 ----------
+    window.onload = function () {
+        // 优先从 GitHub 的 bookmarks.json（分支 main）载入（如果网络可达）
+        // 如果你不想在加载时自动请求 GitHub，可以把下面一行注释掉并恢复 loadBookmarks()
+        downloadFromGitHub().catch(() => loadBookmarks());
+    };
+</script>
+</body>
+</html>
